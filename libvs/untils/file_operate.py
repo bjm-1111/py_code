@@ -27,10 +27,10 @@ class FileBaseInfo(object):
         self._file_type = file_type
 
         if not self.is_exist():
-            raise exception.FileNotExist(file_path=self.file_path)
+            raise exception.FileNotExist(file_path=self.file_path, exp="")
 
         if not self.is_type_curr():
-            raise exception.FileTypeError(file_type=self.file_type)
+            raise exception.FileTypeError(file_type=self.file_type, exp="")
 
     @property
     def file_path(self):
@@ -91,7 +91,7 @@ class FileBaseInfo(object):
                 file_size = file_size / tb_unit
             return file_size
         except Exception as exp:
-            raise exception.GetFileSizeFail(file_path=file_path)
+            raise exception.GetFileSizeFail(file_path=file_path, exp=str(exp))
 
 class JsonFileOpe(FileBaseInfo):
     """
@@ -107,12 +107,12 @@ class JsonFileOpe(FileBaseInfo):
         :return: 字符串或者抛出异常
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f_read:
+            with open(self.file_path, "r", encoding="utf-8") as f_read:
                 file_info = json.load(f_read)
                 file_info = json.dumps(file_info, indent=4,ensure_ascii=False)
             return file_info
         except Exception as exp:
-            raise exception.ReadFileFail(file_path=self.file_path)
+            raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
 
     def read_file(self):
         """
@@ -120,11 +120,11 @@ class JsonFileOpe(FileBaseInfo):
         :return: 字典（列表）或者抛出异常
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f_read:
+            with open(self.file_path, "r", encoding="utf-8") as f_read:
                 file_info = json.load(f_read)
             return file_info
         except Exception as exp:
-            raise exception.ReadFileFail(file_path=self.file_path)
+            raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
 
     def _set_marks(self, file_info):
         """
@@ -144,35 +144,84 @@ class JsonFileOpe(FileBaseInfo):
             if type(file_info) not in (dict, list):
                 file_info = json.loads(self._set_marks(file_info))
 
-            with open(file_path, "w", encoding="utf-8") as f_write:
+            with open(self.file_path, "w", encoding="utf-8") as f_write:
                 json.dump(file_info, f_write)
             return True
         except Exception as exp:
             print(exp)
-            raise exception.WriteFileFail(file_path=self.file_path)
+            raise exception.WriteFileFail(file_path=self.file_path, exp=str(exp))
 
-
-class TextFileOperate(FileBaseInfo):
+class TextFileOpe(FileBaseInfo):
     """
     文本文件的操作类
     """
     def __init__(self, file_path):
         file_type = [".txt", ".log"]
-        super(JsonFileOpe, self).__init__(file_path, file_type=file_type)
+        super(TextFileOpe, self).__init__(file_path, file_type=file_type)
+
+    def read_file_line(self):
+        """
+        按照一行读取文件,用于大文件处理
+        :return: 返回一个迭代器/抛出异常
+        """
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f_read:
+                for line in f_read:
+                    yield line
+        except Exception as exp:
+            raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
+
+    def read_file(self):
+        """
+        全读
+        :return: 返回一个列表/抛出异常
+        """
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f_read:
+                file_info = f_read.readlines()
+            return file_info
+        except Exception as exp:
+            raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
+
+    def write_file_line(self, line, mode="a"):
+        """
+        单行写入(追加)
+        :param line:字符串
+        :return: True/异常
+        """
+        try:
+            with open(self.file_path, mode, encoding="utf-8") as f_write:
+                f_write.write(line)
+            return True
+        except Exception as exp:
+            raise exception.WriteFileFail(file_path=self.file_path, exp=str(exp))
+
+    def write_file_lines(self, lines, mode="a"):
+        """
+        多行写入(追加)
+        :param line:字符串
+        :return: True/异常
+        """
+        try:
+            with open(self.file_path, mode, encoding="utf-8") as f_write:
+                f_write.writelines(lines)
+            return True
+        except Exception as exp:
+            print(exp)
+            raise exception.WriteFileFail(file_path=self.file_path, exp=str(exp))
 
 
 
 
 
 if __name__ == "__main__":
-
     try:
-        file_path = "D:\\my_code\\python_code\\py_code\\libvs\\untils\\test.json"
-        file = JsonFileOpe(file_path)
-        file_info = "{'name': 'leon', 'age': '30', 'email': 'xxxx@163.com'}"
-        print(file.write_file(file_info))
+        file_path = ["D:\\my_code\\python_code\\py_code\\libvs\\untils\\test.json", "\nsss"]
+        file_path_txt = "D:\\my_code\\python_code\\py_code\\libvs\\untils\\记录.txt"
+        file = TextFileOpe(file_path_txt)
+        print(file.write_file_line(file_path))
     except Exception as exp:
         print(exp, "sss")
-    
+
 
 
