@@ -15,6 +15,9 @@
 import exception
 import os
 import json
+import logger
+
+log = logger.LogHandler(__name__, stream=False)
 
 
 class FileBaseInfo(object):
@@ -25,11 +28,15 @@ class FileBaseInfo(object):
 
         self._file_path = file_path
         self._file_type = file_type
+        log.info("文件路径为：{}".format(self._file_path))
+        log.info("文件类型为：{}".format(self._file_type))
 
         if not self.is_exist():
+            log.error("文件路径不存在：{}".format(self._file_path))
             raise exception.FileNotExist(file_path=self.file_path, exp="")
 
         if not self.is_type_curr():
+            log.error("当前只支持此文件类型：{}".format(self._file_type))
             raise exception.FileTypeError(file_type=self.file_type, exp="")
 
     @property
@@ -73,6 +80,7 @@ class FileBaseInfo(object):
         :return: 文件大小/抛出异常
         """
         try:
+            log.info("文件路径为：{}".format(file_path))
             if file_path == None:
                 file_path =self.file_path
             kb_unit = 1024
@@ -81,6 +89,7 @@ class FileBaseInfo(object):
             tb_unit = gb_unit * 1024
 
             file_size = os.path.getsize(file_path)
+            log.info("文件大小：{}字节".format(file_size))
             if unit.upper() == "KB":
                 file_size = file_size / kb_unit
             elif unit.upper() == "MB":
@@ -91,6 +100,7 @@ class FileBaseInfo(object):
                 file_size = file_size / tb_unit
             return file_size
         except Exception as exp:
+            log.error("获取文件大小失败,err：{}".format(str(exp)))
             raise exception.GetFileSizeFail(file_path=file_path, exp=str(exp))
 
 class JsonFileOpe(FileBaseInfo):
@@ -112,6 +122,7 @@ class JsonFileOpe(FileBaseInfo):
                 file_info = json.dumps(file_info, indent=4,ensure_ascii=False)
             return file_info
         except Exception as exp:
+            log.error("读取文件失败：{}".format(str(exp)))
             raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
 
     def read_file(self):
@@ -124,6 +135,7 @@ class JsonFileOpe(FileBaseInfo):
                 file_info = json.load(f_read)
             return file_info
         except Exception as exp:
+            log.error("读取文件失败：{}".format(str(exp)))
             raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
 
     def _set_marks(self, file_info):
@@ -148,7 +160,7 @@ class JsonFileOpe(FileBaseInfo):
                 json.dump(file_info, f_write)
             return True
         except Exception as exp:
-            print(exp)
+            log.error("写入文件失败：{}".format(str(exp)))
             raise exception.WriteFileFail(file_path=self.file_path, exp=str(exp))
 
 class TextFileOpe(FileBaseInfo):
@@ -169,6 +181,7 @@ class TextFileOpe(FileBaseInfo):
                 for line in f_read:
                     yield line
         except Exception as exp:
+            log.error("读取文件失败：{}".format(str(exp)))
             raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
 
     def read_file(self):
@@ -181,6 +194,7 @@ class TextFileOpe(FileBaseInfo):
                 file_info = f_read.readlines()
             return file_info
         except Exception as exp:
+            log.error("读取文件失败：{}".format(str(exp)))
             raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
 
     def write_file_line(self, line, mode="a"):
@@ -194,6 +208,7 @@ class TextFileOpe(FileBaseInfo):
                 f_write.write(line)
             return True
         except Exception as exp:
+            log.error("写入文件失败：{}".format(str(exp)))
             raise exception.WriteFileFail(file_path=self.file_path, exp=str(exp))
 
     def write_file_lines(self, lines, mode="a"):
@@ -207,7 +222,7 @@ class TextFileOpe(FileBaseInfo):
                 f_write.writelines(lines)
             return True
         except Exception as exp:
-            print(exp)
+            log.error("写入文件失败：{}".format(str(exp)))
             raise exception.WriteFileFail(file_path=self.file_path, exp=str(exp))
 
 
