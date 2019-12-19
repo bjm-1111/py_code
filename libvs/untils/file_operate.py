@@ -20,223 +20,116 @@ import logger
 log = logger.LogHandler(__name__, stream=False)
 
 
-class FileBaseInfo(object):
+class BaseFile(object):
     """
-    文件操作的基础类
+    Basic operation base class of file
     """
-    def __init__(self, file_path, file_type=None):
-
+    def __init__(self, file_path):
         self._file_path = file_path
-        self._file_type = file_type
-        log.info("文件路径为：{}".format(self._file_path))
-        log.info("文件类型为：{}".format(self._file_type))
-
-        if not self.is_exist():
-            log.error("文件路径不存在：{}".format(self._file_path))
-            raise exception.FileNotExist(file_path=self.file_path, exp="")
-
-        if not self.is_type_curr():
-            log.error("当前只支持此文件类型：{}".format(self._file_type))
-            raise exception.FileTypeError(file_type=self.file_type, exp="")
+        #是否存在的标记
+        self._is_exist = None
 
     @property
     def file_path(self):
         return self._file_path
 
     @property
-    def file_type(self):
-        return self._file_type
+    def is_exist(self):
+        self._is_exist = os.path.exists(self._file_path)
+        return self._is_exist
 
-    def is_exist(self, file_path=None):
+    def read_lines_to_list(self):
         """
-        判断文件是否存在
-        :param file_path:文件名
-        :return: True/False
+        按照行读取（数据过大读取会有问题）
+        :return: 一个列表
         """
-        if file_path == None:
-            file_path = self.file_path
-        return os.path.exists(file_path)
+        if not self.is_exist:
+            raise IOError("file path not exist:({})".format(self.file_path))
+        with open(self.file_path, "r", encoding="utf-8") as f_read:
+            return f_read.readlines()
 
-    def is_type_curr(self, file_path=None, file_type=None):
+    def read_lines_to_iterator(self):
         """
-        判断文件类型是否正确
-        :param file_type: 文件类型
-        :return: True/False
+        按行读取，返回迭代器
+        :return: 返回一个迭代器
         """
-        if file_path == None:
-            file_path = self.file_path
-        if file_type == None:
-            file_type = self.file_type
-        _, file_type_real = os.path.splitext(file_path)
-        if file_type_real not in file_type:
+        if not self.is_exist:
+            raise IOError("file path not exist:({})".format(self.file_path))
+        with open(self.file_path, "r", encoding="utf-8") as f_read:
+            for line in f_read:
+                yield line
+
+    def _append_linefeed(self, file_info):
+        """
+        给文本信息添加换行符
+        :param file_info:
+        :return:
+        """
+        file_info_list = [info + "\n" for info in file_info]
+        return file_info_list
+
+    def write_lines_to_file(self, file_info, mode="a"):
+        """
+        通过行的方式写
+        :param file_info:需要写入的文件信息(列表)
+        :return: True/False/或者抛出异常
+        """
+        if not file_info or not isinstance(file_info, list):
             return False
-        return True
-
-    def get_file_size(self, file_path=None, unit="GB"):
-        """
-        获取文件大小
-        :param file_path: 文件路径
-        :param unit: 单位
-        :return: 文件大小/抛出异常
-        """
         try:
-            log.info("文件路径为：{}".format(file_path))
-            if file_path == None:
-                file_path =self.file_path
-            kb_unit = 1024
-            mb_unit = kb_unit * 1024
-            gb_unit = mb_unit * 1024
-            tb_unit = gb_unit * 1024
-
-            file_size = os.path.getsize(file_path)
-            log.info("文件大小：{}字节".format(file_size))
-            if unit.upper() == "KB":
-                file_size = file_size / kb_unit
-            elif unit.upper() == "MB":
-                file_size = file_size / mb_unit
-            elif unit.upper() == "GB":
-                file_size = file_size / gb_unit
-            elif unit.upper() == "TB":
-                file_size = file_size / tb_unit
-            return file_size
+            file_info_list = self._append_linefeed(file_info)
+            with open(self.file_path, mode, encoding="utf-8") as f_write:
+                f_write.writelines(file_info_list)
+            return True
         except Exception as exp:
-            log.error("获取文件大小失败,err：{}".format(str(exp)))
-            raise exception.GetFileSizeFail(file_path=file_path, exp=str(exp))
+            raise IOError("write failed:{}".format(exp))
 
-class JsonFileOpe(FileBaseInfo):
-    """
-    json类型文件操作
-    """
+class JsonFile(BaseFile):
+
     def __init__(self, file_path):
-        file_type = [".json"]
-        super(JsonFileOpe, self).__init__(file_path, file_type=file_type)
+        super(JsonFile, self).__init__(file_path)
 
-    def read_file_tostring(self):
-        """
-        读取json文件,返回字符串信息
-        :return: 字符串或者抛出异常
-        """
-        try:
-            with open(self.file_path, "r", encoding="utf-8") as f_read:
-                file_info = json.load(f_read)
-                file_info = json.dumps(file_info, indent=4,ensure_ascii=False)
-            return file_info
-        except Exception as exp:
-            log.error("读取文件失败：{}".format(str(exp)))
-            raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
+    def load_file(self, mode="json"):
+        if not self.is_exist:
+            raise IOError("file path not exist:({})".format(self.file_path))
+        mode_list = ["JSON", "J", "DICT", "D"]
+        with open(self.file_path, "r", encoding="utf-8") as f_read:
+            file_info = json.load(f_read)
+            if mode.upper() not in mode_list:
+                return json.dumps(file_info)
+        return file_info
 
-    def read_file(self):
-        """
-        读取json文件
-        :return: 字典（列表）或者抛出异常
-        """
-        try:
-            with open(self.file_path, "r", encoding="utf-8") as f_read:
-                file_info = json.load(f_read)
-            return file_info
-        except Exception as exp:
-            log.error("读取文件失败：{}".format(str(exp)))
-            raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
-
-    def _set_marks(self, file_info):
-        """
-        把字符串中的单引号变成双引号
-        :param file_info: 文件信息
-        :return: 处理完后的字符串
-        """
-        return file_info.replace("'", "\"")
-
-    def write_file(self, file_info):
+    def dump_file(self, file_info, mode="dict"):
         """
         写文件
-        :param file_info:
-        :return: True/异常
+        :param file_info: 写入的信息
+        :param mode: 是字符串还是json类型的数据
+        :return: True/False/异常
         """
+        mode_list = ["JSON", "J", "DICT", "D", "LIST", "L"]
+        if mode not in mode_list:
+            file_info = json.loads(file_info)
+        if not file_info or (not isinstance(file_info, dict) and not isinstance(file_info, list)):
+            return False
         try:
-            if type(file_info) not in (dict, list):
-                file_info = json.loads(self._set_marks(file_info))
-
             with open(self.file_path, "w", encoding="utf-8") as f_write:
-                json.dump(file_info, f_write)
+                json.dump(file_info, f_write, ensure_ascii=False, indent=4)
             return True
         except Exception as exp:
-            log.error("写入文件失败：{}".format(str(exp)))
-            raise exception.WriteFileFail(file_path=self.file_path, exp=str(exp))
-
-class TextFileOpe(FileBaseInfo):
-    """
-    文本文件的操作类
-    """
-    def __init__(self, file_path):
-        file_type = [".txt", ".log"]
-        super(TextFileOpe, self).__init__(file_path, file_type=file_type)
-
-    def read_file_line(self):
-        """
-        按照一行读取文件,用于大文件处理
-        :return: 返回一个迭代器/抛出异常
-        """
-        try:
-            with open(self.file_path, "r", encoding="utf-8") as f_read:
-                for line in f_read:
-                    yield line
-        except Exception as exp:
-            log.error("读取文件失败：{}".format(str(exp)))
-            raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
-
-    def read_file(self):
-        """
-        全读
-        :return: 返回一个列表/抛出异常
-        """
-        try:
-            with open(self.file_path, "r", encoding="utf-8") as f_read:
-                file_info = f_read.readlines()
-            return file_info
-        except Exception as exp:
-            log.error("读取文件失败：{}".format(str(exp)))
-            raise exception.ReadFileFail(file_path=self.file_path, exp=str(exp))
-
-    def write_file_line(self, line, mode="a"):
-        """
-        单行写入(追加)
-        :param line:字符串
-        :return: True/异常
-        """
-        try:
-            with open(self.file_path, mode, encoding="utf-8") as f_write:
-                f_write.write(line)
-            return True
-        except Exception as exp:
-            log.error("写入文件失败：{}".format(str(exp)))
-            raise exception.WriteFileFail(file_path=self.file_path, exp=str(exp))
-
-    def write_file_lines(self, lines, mode="a"):
-        """
-        多行写入(追加)
-        :param line:字符串
-        :return: True/异常
-        """
-        try:
-            with open(self.file_path, mode, encoding="utf-8") as f_write:
-                f_write.writelines(lines)
-            return True
-        except Exception as exp:
-            log.error("写入文件失败：{}".format(str(exp)))
-            raise exception.WriteFileFail(file_path=self.file_path, exp=str(exp))
-
-
-
-
+            raise IOError("write failed:{}".format(exp))
 
 if __name__ == "__main__":
+
     try:
         file_path = ["D:\\my_code\\python_code\\py_code\\libvs\\untils\\test.json", "\nsss"]
         file_path_txt = "D:\\my_code\\python_code\\py_code\\libvs\\untils\\记录.txt"
-        file = TextFileOpe(file_path_txt)
-        print(file.write_file_line(file_path))
+        file_path_json = "D:\\my_code\\python_code\\py_code\\libvs\\untils\\test.json"
+        file = JsonFile(file_path_json)
+        count = 0
+        print(file.dump_file('[{"name": "bjm", "age": "2222", "email": "xxxx@163.com"}]', mode="string"))
     except Exception as exp:
-        print(exp, "sss")
+        print(exp)
+
 
 
 

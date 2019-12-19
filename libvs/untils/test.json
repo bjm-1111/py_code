@@ -1,1 +1,7 @@
-{"name": "leon", "age": "30", "email": "xxxx@163.com"}
+[
+    {
+        "name": "bjm",
+        "age": "2222",
+        "email": "xxxx@163.com"
+    }
+]

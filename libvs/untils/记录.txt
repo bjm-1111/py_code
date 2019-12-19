@@ -1,10 +1,1 @@
-1：处理json中如果是字符串loads，里面的key不能为单引号，否则会解析失败
-   比如: {
-          info = "{'name': 'leon', 'age': '30', 'email': 'xxxx@163.com'}"
-          json_data = json_loads(info)
-        }
-    会报错
-
-D:\my_code\python_code\py_code\libvs\untils\test.json
-sssD:\my_code\python_code\py_code\libvs\untils\test.json
-sss
+bbb
